@@ -16,9 +16,10 @@
 #define UID_LENGTH 4
 #define MAX_UIDS 32
 #define BUZZER_PIN 15
-int cho_trong = 10;
+#define so_cho 4
+int cho_trong = so_cho;
 int dieu_khien_barie;
-String vi_tri[10] = {""}; // Quản lý chỗ từ A1 đến A10, ưu tiên A10 -> A1
+String vi_tri[so_cho] = {""}; // Quản lý chỗ từ A1 đến A10, ưu tiên A10 -> A1
 
 
 /////////////////////////////
@@ -65,11 +66,19 @@ void showMessage(String line1, String line2) {
 }
 
 void showWaitingScreen() {
-  lcd.clear();
-  lcd.setCursor(0, 0); lcd.print("Hay quet the");
-  lcd.setCursor(0, 1); lcd.print("Con ");
-  lcd.print(cho_trong);
-  lcd.print(" cho trong");
+  if(cho_trong==0){
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("Ham xe het cho!");
+    lcd.setCursor(0, 1); lcd.print("Chi cho di ra");
+
+  }
+  else{
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("Hay quet the");
+    lcd.setCursor(0, 1); lcd.print("Con ");
+    lcd.print(cho_trong);
+    lcd.print(" cho trong");
+  }
 }
 
 void showMasterWaiting() {
@@ -175,7 +184,7 @@ void initEEPROM() {
 }
 //setup vi tri====================================================
 String capViTri(String uid) {
-  for (int i = 9; i >= 0; i--) { // A10 đến A1
+  for (int i = so_cho -1; i >= 0; i--) { // A10 đến A1
     if (vi_tri[i] == "") {
       vi_tri[i] = uid;
       return "A" + String(i + 1);
@@ -185,7 +194,7 @@ String capViTri(String uid) {
 }
 
 void xoaViTri(String uid) {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < so_cho; i++) {
     if (vi_tri[i] == uid) {
       vi_tri[i] = "";
       break;
@@ -193,44 +202,27 @@ void xoaViTri(String uid) {
   }
 }
 
-
-// int xuLyTheHopLe(byte *currentUID) {
-//   String uidStr = uidToString(currentUID);
-//   bool status = statusMap[uidStr];
-
-//   if (!status) {
-//     showMessage("Thanh cong !", "Moi vao");
-//     statusMap[uidStr] = true;
-//     cho_trong--;
-//   } else {
-//     showMessage("Thanh cong !", "Tam biet");
-//     statusMap[uidStr] = false;
-//     cho_trong++;
-//   }
-
-//   // Bật còi trong 1 giây
-//   digitalWrite(BUZZER_PIN, HIGH);
-//   delay(1000);
-//   digitalWrite(BUZZER_PIN, LOW);
-
-//   trangThaiRFID = 1;
-//   rfidStartTime = millis();
-//   Serial.print("Trang thai RFID: ");
-//   Serial.println(trangThaiRFID);
-
-//   return 1;
-// }
-
 int xuLyTheHopLe(byte *currentUID) {
   String uidStr = uidToString(currentUID);
   bool status = statusMap[uidStr];
 
-  if (!status) {
+  if (!status) { // Nếu chưa có mặt (tức là xe đang muốn vào)
+    if (cho_trong == 0) {
+      showMessage("Ham xe het cho!", "Chi cho di ra");
+      digitalWrite(BUZZER_PIN, HIGH);
+      delay(100);
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(100);
+      digitalWrite(BUZZER_PIN, HIGH);
+      delay(100);
+      digitalWrite(BUZZER_PIN, LOW);
+      return 0; // Không cho vào
+    }
     String viTri = capViTri(uidStr);
     showMessage("Quet thanh cong", "Moi vao " + viTri);
     statusMap[uidStr] = true;
     cho_trong--;
-  } else {
+  } else { // Nếu đã có mặt (tức là xe đang ra)
     xoaViTri(uidStr);
     showMessage("Quet thanh cong", "Tam biet");
     statusMap[uidStr] = false;
@@ -247,9 +239,42 @@ int xuLyTheHopLe(byte *currentUID) {
   Serial.print("Trang thai RFID: ");
   Serial.println(trangThaiRFID);
 
-
   return 1;
 }
+
+
+
+
+
+// int xuLyTheHopLe(byte *currentUID) {
+//   String uidStr = uidToString(currentUID);
+//   bool status = statusMap[uidStr];
+
+//   if (!status) {
+//     String viTri = capViTri(uidStr);
+//     showMessage("Quet thanh cong", "Moi vao " + viTri);
+//     statusMap[uidStr] = true;
+//     cho_trong--;
+//   } else {
+//     xoaViTri(uidStr);
+//     showMessage("Quet thanh cong", "Tam biet");
+//     statusMap[uidStr] = false;
+//     cho_trong++;
+//   }
+
+//   // Bật còi trong 1 giây
+//   digitalWrite(BUZZER_PIN, HIGH);
+//   delay(1000);
+//   digitalWrite(BUZZER_PIN, LOW);
+
+//   trangThaiRFID = 1;
+//   rfidStartTime = millis();
+//   Serial.print("Trang thai RFID: ");
+//   Serial.println(trangThaiRFID);
+
+
+//   return 1;
+// }
 //Hàm clear EPPROm để reset thẻ master
 void clearEEPROM() {
   for (int i = 0; i < EEPROM_SIZE; i++) {
@@ -355,7 +380,7 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
-  clearEEPROM();  //Khi muốn thay thẻ master, bỏ comment dòng này để reset bộ nhớ EPPROM
+//  clearEEPROM();  //Khi muốn thay thẻ master, bỏ comment dòng này để reset bộ nhớ EPPROM
   initEEPROM();
   showWaitingScreen();
 
@@ -445,6 +470,7 @@ void loop() {
     delay(2000);
     showWaitingScreen();
   }
+  
 
 //   delay(2000);
 
