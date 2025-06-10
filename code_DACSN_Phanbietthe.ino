@@ -6,7 +6,7 @@
 #include <map>
 #include <ESP32Servo.h>
 
-// Chân và giá trị dùng cho LCD và RFID
+// Chân và giá trị dùng cho LCD và RFID 
 #define SS_PIN 5
 #define RST_PIN 4
 #define EEPROM_SIZE 512
